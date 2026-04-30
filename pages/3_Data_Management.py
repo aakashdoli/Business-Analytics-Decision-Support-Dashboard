@@ -5,7 +5,10 @@ from app.analytics.kpi_engine import KPIEngine
 from app.analytics.anomaly_detection import AnomalyEngine
 from app.forecasting.engine import ForecastingEngine
 
+from app.utils.styles import apply_custom_styles
+
 st.set_page_config(page_title="Data Management", layout="wide")
+apply_custom_styles()
 
 def show():
     st.title("⚙️ Data Management & ETL Center")

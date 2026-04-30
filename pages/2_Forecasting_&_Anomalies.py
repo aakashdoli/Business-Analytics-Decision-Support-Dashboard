@@ -5,7 +5,10 @@ import pandas as pd
 from app.database.session import SessionLocal
 from app.database.models import ForecastResult, AnomalyLog, OperationalData
 
+from app.utils.styles import apply_custom_styles
+
 st.set_page_config(page_title="Forecasting & Anomalies", layout="wide")
+apply_custom_styles()
 
 def show():
     st.title("🔮 Forecasting & Anomaly Detection")

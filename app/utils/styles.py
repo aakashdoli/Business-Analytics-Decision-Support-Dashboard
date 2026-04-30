@@ -10,34 +10,55 @@ def apply_custom_styles():
     
     /* Sidebar Styling */
     section[data-testid="stSidebar"] {
-        background-color: rgba(15, 23, 42, 0.95) !important;
-        backdrop-filter: blur(12px);
-        background-image: linear-gradient(180deg, rgba(30, 41, 59, 0.5) 0%, rgba(15, 23, 42, 1) 100%);
+        background-color: #0f172a !important;
         border-right: 1px solid rgba(255, 255, 255, 0.05);
     }
     
-    /* Remove the weird Streamlit top gradient */
-    [data-testid="stSidebarNav"] {
+    /* REMOVE ALL GRADIENTS FROM NAV (Targeting all potential containers) */
+    [data-testid="stSidebarNav"],
+    [data-testid="stSidebarNav"] > div {
+        background-image: none !important;
         background-color: transparent !important;
     }
     
-    /* Sidebar Icons */
-    [data-testid="stSidebarNav"] svg {
-        fill: #94a3b8 !important;
+    [data-testid="stSidebarNav"]::before, 
+    [data-testid="stSidebarNav"]::after,
+    [data-testid="stSidebarNav"] > div::before,
+    [data-testid="stSidebarNav"] > div::after {
+        content: none !important;
+        display: none !important;
+        background: none !important;
+        background-image: none !important;
+    }
+
+    /* HIGH CONTRAST NAV LINKS */
+    [data-testid="stSidebarNav"] a,
+    [data-testid="stSidebarNav"] a * {
+        background-color: transparent !important;
+        color: #ffffff !important;
+        opacity: 1 !important;
     }
     
-    /* Sidebar Navigation Links */
-    section[data-testid="stSidebarNav"] ul {
-        padding-top: 20px;
+    [data-testid="stSidebarNav"] span {
+        color: #ffffff !important;
+        font-weight: 600 !important;
+        font-size: 1.05rem !important;
+        opacity: 1 !important;
     }
-    
-    section[data-testid="stSidebarNav"] li div a span {
-        color: #cbd5e1 !important; /* Light grey for links */
-        font-weight: 500;
+    /* Active Link Highlight */
+    section[data-testid="stSidebarNav"] li div a[aria-current="page"] {
+        background-color: rgba(59, 130, 246, 0.2) !important;
+        border-radius: 8px;
     }
     
     section[data-testid="stSidebarNav"] li div a:hover {
-        background-color: rgba(255, 255, 255, 0.05) !important;
+        background-color: rgba(255, 255, 255, 0.1) !important;
+        border-radius: 8px;
+    }
+
+    /* Icons */
+    [data-testid="stSidebarNav"] svg {
+        fill: #ffffff !important;
     }
 
     section[data-testid="stSidebar"] .stMarkdown {
