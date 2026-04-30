@@ -75,32 +75,46 @@ def generate_enterprise_data(num_years=3):
                     prod_base -= random.uniform(10, 25) # Productivity hit
                 record['employee_productivity'] = round(max(60, min(100, random.gauss(prod_base, 5))), 1)
                 
-                # Financials per department
+                # Financials per department - STRICT ENTERPRISE COVARIANCE
+                # Target Operating Margin: 5-35%. Target Total Costs = 65% to 95% of Rev.
+                # Target Gross Margin: 15-55%. Target COGS (Mfg+Log) = 45% to 85% of Rev.
+                
                 if dept == 'Sales':
                     record['revenue'] = round(region_daily_rev, 2)
                     record['units_sold'] = int(region_daily_rev / random.uniform(120, 150))
-                    # Sales costs (Commissions, travel) ~ 10-15% of rev
+                    # Sales costs ~ 10-15% of rev
                     record['costs'] = round(region_daily_rev * random.uniform(0.10, 0.15), 2)
                     
                 elif dept == 'Manufacturing':
-                    # COGS ~ 35-45% of total expected revenue (to ensure 15-50% gross margins later)
-                    record['costs'] = round(region_daily_rev * random.uniform(0.35, 0.45), 2)
+                    # Mfg costs ~ 40-70% of rev
+                    mfg_ratio = random.uniform(0.40, 0.70)
+                    record['costs'] = round(region_daily_rev * mfg_ratio, 2)
                     record['inventory_level'] = int(record['headcount'] * random.uniform(50, 100))
                     
                 elif dept == 'Logistics':
-                    # Logistics costs ~ 5-10% of rev
-                    record['costs'] = round(region_daily_rev * random.uniform(0.05, 0.10), 2)
+                    # Logistics costs ~ 5-15% of rev. 
+                    # Covariance: If there's an anomaly/delay, costs spike.
                     delay_base = 1.0 if region in ['North America', 'EMEA'] else 2.5
-                    if is_anomaly: delay_base += random.uniform(2, 5) # Supply chain shock
+                    if is_anomaly: 
+                        delay_base += random.uniform(2, 6) # Supply chain shock
                     record['logistics_delay_days'] = round(max(0.1, random.gauss(delay_base, 0.5)), 1)
                     
+                    log_ratio = 0.05 + (record['logistics_delay_days'] * 0.015) # Delay drives cost up
+                    log_ratio = min(0.15, log_ratio) # Cap at 15%
+                    record['costs'] = round(region_daily_rev * log_ratio, 2)
+                    
                 elif dept in ['Marketing', 'Customer Support', 'Operations']:
-                    # Fixed + Variable costs based on headcount
-                    record['costs'] = round((record['headcount'] * random.uniform(200, 400)) + (region_daily_rev * random.uniform(0.01, 0.05)), 2)
+                    # Shared OPEX ~ 5-10% of rev each, scaled by productivity
+                    opex_ratio = random.uniform(0.05, 0.08)
+                    if record['employee_productivity'] < 75:
+                        opex_ratio += 0.02 # Low productivity drives higher OPEX
+                    record['costs'] = round(region_daily_rev * opex_ratio, 2)
                 
                 # Status
                 if record['logistics_delay_days'] > 4.0 or record['employee_productivity'] < 65:
                     record['status'] = 'Warning'
+                if record['logistics_delay_days'] > 6.0:
+                    record['status'] = 'Critical'
                     
                 data.append(record)
                 
