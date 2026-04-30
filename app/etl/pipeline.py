@@ -13,11 +13,11 @@ class ETLPipeline:
 
     def process_csv(self, file_path):
         try:
-            logger.info(f"Starting ETL for {file_path}")
+            logger.info(f"Starting Enterprise ETL for {file_path}")
             df = pd.read_csv(file_path)
             
             # Validation
-            required_columns = ['date', 'department', 'revenue', 'costs', 'units_produced', 'units_sold']
+            required_columns = ['date', 'region', 'department', 'revenue', 'costs']
             for col in required_columns:
                 if col not in df.columns:
                     raise ValueError(f"Missing required column: {col}")
@@ -27,36 +27,37 @@ class ETLPipeline:
             df = df.fillna({
                 'revenue': 0.0,
                 'costs': 0.0,
-                'units_produced': 0,
                 'units_sold': 0,
+                'inventory_level': 0,
+                'logistics_delay_days': 0.0,
+                'employee_productivity': 0.0,
                 'headcount': 0,
-                'status': 'Unknown'
+                'status': 'Active'
             })
-
-            # Data Transformation
-            # (In a real app, we might add more logic here)
 
             # Ingestion
             records = []
             for _, row in df.iterrows():
                 record = OperationalData(
                     date=row['date'].date(),
+                    region=row['region'],
                     department=row['department'],
                     revenue=float(row['revenue']),
                     costs=float(row['costs']),
-                    units_produced=int(row['units_produced']),
                     units_sold=int(row['units_sold']),
+                    inventory_level=int(row['inventory_level']),
+                    logistics_delay_days=float(row['logistics_delay_days']),
+                    employee_productivity=float(row['employee_productivity']),
                     headcount=int(row['headcount']),
                     status=row['status']
                 )
                 records.append(record)
 
-            # Clear existing data for demo purposes (optional)
-            # self.db.query(OperationalData).delete()
-            
+            # Bulk insert for speed
+            self.db.query(OperationalData).delete() # Reset for demo
             self.db.add_all(records)
             self.db.commit()
-            logger.success(f"Successfully ingested {len(records)} records")
+            logger.success(f"Successfully ingested {len(records)} enterprise records")
             return len(records)
 
         except Exception as e:
@@ -68,4 +69,4 @@ class ETLPipeline:
 
 if __name__ == "__main__":
     pipeline = ETLPipeline()
-    pipeline.process_csv('data/sample_operations.csv')
+    pipeline.process_csv('data/enterprise_operations.csv')

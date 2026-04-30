@@ -4,30 +4,31 @@ import pandas as pd
 from app.database.session import SessionLocal
 from app.database.models import KPIResult, OperationalData
 from app.ai_insights.engine import AIInsightEngine
+from app.utils.styles import apply_custom_styles, render_metric_card
 
-st.set_page_config(page_title="Executive Summary", layout="wide")
+st.set_page_config(page_title="Executive Dashboard", layout="wide")
+apply_custom_styles()
 
 def show():
-    st.title("📈 Executive Summary")
+    st.title("📈 Executive Performance Dashboard")
     
     db = SessionLocal()
-    engine = AIInsightEngine(db)
     
-    # 1. AI Insights Section
-    st.subheader("🤖 AI-Powered Business Insights")
-    insights = engine.generate_executive_summary()
-    for insight in insights:
-        if "WARNING" in insight:
-            st.warning(insight)
-        elif "RECOMMENDATION" in insight:
-            st.info(insight)
-        else:
-            st.write(insight)
-            
+    # KPI Top Bar
+    kpis = db.query(KPIResult).all()
+    if kpis:
+        cols = st.columns(len(kpis))
+        for i, kpi in enumerate(kpis):
+            with cols[i]:
+                render_metric_card(
+                    kpi.name, 
+                    f"${kpi.value:,.0f}" if "Revenue" in kpi.name else f"{kpi.value:.1f}",
+                    delta=f"{kpi.mom_growth:+.1f}% MoM" if kpi.mom_growth else None
+                )
+    
     st.markdown("---")
     
-    # 2. Visualizations
-    col1, col2 = st.columns(2)
+    col1, col2 = st.columns([1, 1])
     
     data = db.query(OperationalData).all()
     if data:
@@ -35,20 +36,25 @@ def show():
             'date': d.date,
             'revenue': d.revenue,
             'costs': d.costs,
-            'dept': d.department
+            'region': d.region,
+            'dept': d.department,
+            'productivity': d.employee_productivity
         } for d in data])
         
+        df['date'] = pd.to_datetime(df['date'])
+        
         with col1:
-            st.subheader("Revenue by Department")
-            fig = px.pie(df, values='revenue', names='dept', hole=0.4,
-                         color_discrete_sequence=px.colors.sequential.RdBu)
+            st.subheader("🌍 Revenue by Region")
+            fig = px.bar(df.groupby('region')['revenue'].sum().reset_index(), 
+                         x='region', y='revenue', color='region',
+                         template='plotly_white')
             st.plotly_chart(fig, use_container_width=True)
             
         with col2:
-            st.subheader("Revenue vs Costs Trend")
-            df_trend = df.groupby('date').sum().reset_index()
-            fig = px.line(df_trend, x='date', y=['revenue', 'costs'], 
-                          labels={'value': 'Amount ($)', 'variable': 'Metric'})
+            st.subheader("⚙️ Efficiency vs Costs")
+            fig = px.scatter(df, x='costs', y='productivity', color='dept',
+                             size='revenue', hover_name='region',
+                             template='plotly_white')
             st.plotly_chart(fig, use_container_width=True)
 
     db.close()

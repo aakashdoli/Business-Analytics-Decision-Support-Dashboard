@@ -1,30 +1,29 @@
 import streamlit as st
 import streamlit_authenticator as stauth
-import yaml
-from yaml.loader import SafeLoader
 import os
 from dotenv import load_dotenv
+from app.utils.styles import apply_custom_styles
 
 load_dotenv()
 
 st.set_page_config(
-    page_title="Business Analytics Dashboard",
-    page_icon="📊",
+    page_title="Enterprise Analytics | Co-Pilot",
+    page_icon="💎",
     layout="wide",
     initial_sidebar_state="expanded",
 )
 
-# Simple Auth Configuration (In a real app, this would be in a DB or config file)
-names = ["Admin User"]
-usernames = ["admin"]
-passwords = ["admin123"] # In production, use hashed passwords
+apply_custom_styles()
 
-# Pre-hashing passwords for the authenticator
+# Auth Configuration
+names = ["Executive Admin"]
+usernames = ["admin"]
+passwords = ["admin123"]
 hashed_passwords = stauth.Hasher(passwords).generate()
 
 authenticator = stauth.Authenticate(
     {'usernames': {usernames[0]: {'name': names[0], 'password': hashed_passwords[0]}}},
-    "analytics_dashboard",
+    "enterprise_analytics",
     "auth_key",
     cookie_expiry_days=30
 )
@@ -32,24 +31,32 @@ authenticator = stauth.Authenticate(
 name, authentication_status, username = authenticator.login(location="main")
 
 if authentication_status:
-    st.sidebar.success(f"Welcome {name}")
+    st.sidebar.markdown(f"### 👤 {name}")
     authenticator.logout("Logout", "sidebar")
     
-    st.title("🚀 Business Analytics & Decision Support")
+    st.sidebar.markdown("---")
+    st.sidebar.markdown("### 📊 NAVIGATION")
+    
+    st.title("💎 Enterprise SaaS Dashboard")
+    st.markdown("##### Welcome to your real-time business intelligence suite.")
+    
     st.markdown("---")
     
-    # Navigation Instructions
-    st.info("Select a page from the sidebar to begin your analysis.")
-    
-    col1, col2, col3 = st.columns(3)
+    # Overview metrics in new cards
+    col1, col2, col3, col4 = st.columns(4)
     with col1:
-        st.metric("Total Revenue", "$1.2M", "+12%")
+        st.metric("Global Revenue", "$24.8M", "+14.2% MoM")
     with col2:
-        st.metric("Ops Efficiency", "85%", "+5%")
+        st.metric("Ops Efficiency", "92.4%", "+2.1%")
     with col3:
-        st.metric("Active Anomalies", "3", "-2")
+        st.metric("Inventory Health", "Good", "Normal")
+    with col4:
+        st.metric("Active Regions", "4", "Stable")
+
+    st.markdown("### 🚀 Get Started")
+    st.info("Select **AI Co-Pilot** from the sidebar to ask questions about your business data directly.")
 
 elif authentication_status == False:
     st.error("Username/password is incorrect")
 elif authentication_status == None:
-    st.warning("Please enter your username and password")
+    st.warning("Please enter your credentials to access the secure portal.")

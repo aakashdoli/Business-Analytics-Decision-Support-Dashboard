@@ -9,11 +9,14 @@ class OperationalData(Base):
     
     id = Column(Integer, primary_key=True)
     date = Column(Date, nullable=False, index=True)
+    region = Column(String, index=True)
     department = Column(String, index=True)
     revenue = Column(Float, default=0.0)
     costs = Column(Float, default=0.0)
-    units_produced = Column(Integer, default=0)
     units_sold = Column(Integer, default=0)
+    inventory_level = Column(Integer, default=0)
+    logistics_delay_days = Column(Float, default=0.0)
+    employee_productivity = Column(Float, default=0.0)
     headcount = Column(Integer, default=0)
     status = Column(String)
     created_at = Column(DateTime, default=datetime.utcnow)
@@ -24,10 +27,13 @@ class KPIResult(Base):
     id = Column(Integer, primary_key=True)
     name = Column(String, nullable=False, index=True)
     value = Column(Float, nullable=False)
-    period = Column(String) # e.g., "2024-Q1" or "2024-03"
+    period = Column(String) 
     target = Column(Float)
     trend_pct = Column(Float)
+    mom_growth = Column(Float) # Month-over-Month
+    yoy_growth = Column(Float) # Year-over-Year
     category = Column(String)
+    health_score = Column(Float) # 0-100
     calculated_at = Column(DateTime, default=datetime.utcnow)
 
 class AnomalyLog(Base):
@@ -39,7 +45,7 @@ class AnomalyLog(Base):
     observed_value = Column(Float)
     expected_value = Column(Float)
     confidence_score = Column(Float)
-    severity = Column(String) # Low, Medium, High
+    severity = Column(String) 
     description = Column(String)
     detected_at = Column(DateTime, default=datetime.utcnow)
 

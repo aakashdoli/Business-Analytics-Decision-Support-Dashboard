@@ -2,58 +2,64 @@ import pandas as pd
 from sqlalchemy.orm import Session
 from app.database.models import OperationalData, KPIResult
 from app.database.session import SessionLocal
+from loguru import logger
 
 class KPIEngine:
     def __init__(self, db: Session = None):
         self.db = db or SessionLocal()
 
     def calculate_all_kpis(self):
-        # Fetch all operational data
+        logger.info("Starting advanced KPI calculations...")
         data = self.db.query(OperationalData).all()
         if not data:
             return
         
         df = pd.DataFrame([{
-            'date': d.date,
-            'department': d.department,
+            'date': pd.to_datetime(d.date),
             'revenue': d.revenue,
             'costs': d.costs,
-            'units_produced': d.units_produced,
-            'units_sold': d.units_sold,
-            'headcount': d.headcount
+            'productivity': d.employee_productivity
         } for d in data])
         
-        df['date'] = pd.to_datetime(df['date'])
+        # Monthly aggregation for growth metrics
+        monthly = df.set_index('date').resample('ME').sum()
         
-        # 1. Total Revenue
-        total_revenue = df['revenue'].sum()
-        self._save_kpi("Total Revenue", total_revenue, "All Time", category="Financial")
+        # 1. Total Revenue & Growth
+        latest_rev = monthly['revenue'].iloc[-1]
+        prev_rev = monthly['revenue'].iloc[-2] if len(monthly) > 1 else latest_rev
+        mom_growth = ((latest_rev - prev_rev) / prev_rev * 100) if prev_rev > 0 else 0
         
-        # 2. Gross Margin
-        total_costs = df['costs'].sum()
-        gross_margin = ((total_revenue - total_costs) / total_revenue * 100) if total_revenue > 0 else 0
-        self._save_kpi("Gross Margin %", gross_margin, "All Time", category="Financial")
+        yoy_rev = monthly['revenue'].iloc[-13] if len(monthly) > 12 else None
+        yoy_growth = ((latest_rev - yoy_rev) / yoy_rev * 100) if yoy_rev and yoy_rev > 0 else 0
         
-        # 3. Operational Efficiency (Units Produced / Headcount)
-        total_produced = df['units_produced'].sum()
-        total_headcount = df['headcount'].sum()
-        efficiency = (total_produced / total_headcount) if total_headcount > 0 else 0
-        self._save_kpi("Ops Efficiency", efficiency, "All Time", category="Operations")
-        
-        # 4. Sales Conversion Rate
-        total_sold = df['units_sold'].sum()
-        conversion = (total_sold / total_produced * 100) if total_produced > 0 else 0
-        self._save_kpi("Sales Conversion %", conversion, "All Time", category="Sales")
+        # 2. Health Score (Efficiency + Productivity)
+        avg_productivity = df['productivity'].mean()
+        margin = ((df['revenue'].sum() - df['costs'].sum()) / df['revenue'].sum() * 100)
+        health_score = (avg_productivity * 0.4) + (margin * 0.6)
+        health_score = max(0, min(100, health_score)) # Clamp 0-100
 
+        self.db.query(KPIResult).delete() # Reset
+        
+        self._save_kpi("Total Revenue", latest_rev, "Latest Month", 
+                       mom_growth=mom_growth, yoy_growth=yoy_growth, category="Financial")
+        
+        self._save_kpi("Business Health", health_score, "Current", 
+                       category="Strategic", health_score=health_score)
+        
+        self._save_kpi("Gross Margin %", margin, "All Time", category="Financial")
+        
         self.db.commit()
+        logger.success("KPI calculations completed.")
 
-    def _save_kpi(self, name, value, period, target=None, category="General"):
+    def _save_kpi(self, name, value, period, mom_growth=0, yoy_growth=0, category="General", health_score=None):
         kpi = KPIResult(
             name=name,
             value=float(value),
             period=period,
-            target=target,
-            category=category
+            mom_growth=float(mom_growth),
+            yoy_growth=float(yoy_growth),
+            category=category,
+            health_score=float(health_score) if health_score is not None else None
         )
         self.db.add(kpi)
 
