@@ -6,48 +6,61 @@ st.set_page_config(page_title="AI Co-Pilot", layout="wide")
 apply_custom_styles()
 
 def show():
-    st.title("🤖 AI Co-Pilot")
-    st.markdown("##### Ask your business data anything. Powered by Semantic Reasoning.")
-    
+    st.title("🤖 Enterprise AI Co-Pilot")
+    st.markdown("##### Semantic operational intelligence engine.")
     st.markdown("---")
     
-    col1, col2 = st.columns([1, 2])
-    
-    with col1:
-        st.subheader("💡 Suggestions")
-        st.info("Try these queries:")
-        if st.button("Which department has highest operational cost?"):
-            st.session_state.query = "Which department has highest operational cost?"
-        if st.button("Why did revenue decline in March?"):
-            st.session_state.query = "Why did revenue decline in March?"
-        if st.button("Show anomaly trends for logistics."):
-            st.session_state.query = "Show anomaly trends for logistics."
-        if st.button("Best performing region?"):
-            st.session_state.query = "Best performing region?"
+    # Initialize Copilot & State
+    if 'copilot' not in st.session_state:
+        st.session_state.copilot = AICopilot()
+    if 'messages' not in st.session_state:
+        st.session_state.messages = []
+        # Initial greeting
+        st.session_state.messages.append({
+            "role": "assistant",
+            "content": "Hello. I am your Enterprise Data Co-Pilot. I monitor KPIs, detect anomalies, and track cost efficiency. What would you like to analyze today?",
+            "follow_ups": ["What is driving our highest costs?", "Show me the best performing region", "Are there any recent anomalies?"]
+        })
 
-    with col2:
-        st.subheader("💬 Ask Your Data")
+    # Render Chat History
+    for msg in st.session_state.messages:
+        with st.chat_message(msg["role"]):
+            st.markdown(msg["content"])
+            # Render follow-up suggestions if it's the latest assistant message
+            if msg["role"] == "assistant" and msg.get("follow_ups") and msg == st.session_state.messages[-1]:
+                st.write("**Suggested next queries:**")
+                cols = st.columns(len(msg["follow_ups"]))
+                for idx, suggestion in enumerate(msg["follow_ups"]):
+                    with cols[idx]:
+                        if st.button(suggestion, key=f"sug_{idx}_{len(st.session_state.messages)}"):
+                            st.session_state.pending_query = suggestion
+                            st.rerun()
+
+    # Input Handling
+    query = st.chat_input("Ask your business data anything...")
+    
+    # Check if a suggestion was clicked
+    if 'pending_query' in st.session_state:
+        query = st.session_state.pending_query
+        del st.session_state.pending_query
+
+    if query:
+        # Display User Message
+        with st.chat_message("user"):
+            st.markdown(query)
+        st.session_state.messages.append({"role": "user", "content": query})
         
-        # Session state for chat history if needed
-        if 'chat_history' not in st.session_state:
-            st.session_state.chat_history = []
-            
-        user_query = st.text_input("Enter your business question...", 
-                                   value=st.session_state.get('query', ''),
-                                   key="query_input")
-        
-        if st.button("Send Query"):
-            if user_query:
-                copilot = AICopilot()
-                with st.spinner("Thinking..."):
-                    response = copilot.ask(user_query)
-                    st.session_state.chat_history.append((user_query, response))
-        
-        # Display chat history
-        for q, r in reversed(st.session_state.chat_history):
-            st.markdown(f"**You:** {q}")
-            st.markdown(f"""<div class="chat-bubble"><b>AI Co-Pilot:</b><br>{r}</div>""", unsafe_allow_html=True)
-            st.markdown("---")
+        # Display Assistant Thinking
+        with st.chat_message("assistant"):
+            with st.spinner("Analyzing operational warehouse..."):
+                res = st.session_state.copilot.ask(query)
+                st.markdown(res['response'])
+                st.session_state.messages.append({
+                    "role": "assistant", 
+                    "content": res['response'],
+                    "follow_ups": res.get('follow_ups', [])
+                })
+        st.rerun()
 
 if __name__ == "__main__":
     show()

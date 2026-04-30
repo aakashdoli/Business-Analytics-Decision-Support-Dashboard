@@ -9,47 +9,69 @@ class KPIEngine:
         self.db = db or SessionLocal()
 
     def calculate_all_kpis(self):
-        logger.info("Starting advanced KPI calculations...")
+        logger.info("Starting advanced Enterprise KPI calculations...")
         data = self.db.query(OperationalData).all()
         if not data:
+            logger.warning("No data found for KPI calculation.")
             return
         
         df = pd.DataFrame([{
             'date': pd.to_datetime(d.date),
+            'department': d.department,
             'revenue': d.revenue,
             'costs': d.costs,
             'productivity': d.employee_productivity
         } for d in data])
         
-        # Monthly aggregation for growth metrics
-        monthly = df.set_index('date').resample('ME').sum()
+        # Segment financial data
+        sales_data = df[df['department'] == 'Sales']
+        mfg_data = df[df['department'] == 'Manufacturing']
         
-        # 1. Total Revenue & Growth
-        latest_rev = monthly['revenue'].iloc[-1]
-        prev_rev = monthly['revenue'].iloc[-2] if len(monthly) > 1 else latest_rev
+        # Monthly aggregation
+        monthly_rev = sales_data.set_index('date').resample('ME')['revenue'].sum()
+        
+        # 1. Revenue & Growth
+        latest_rev = monthly_rev.iloc[-1]
+        prev_rev = monthly_rev.iloc[-2] if len(monthly_rev) > 1 else latest_rev
         mom_growth = ((latest_rev - prev_rev) / prev_rev * 100) if prev_rev > 0 else 0
         
-        yoy_rev = monthly['revenue'].iloc[-13] if len(monthly) > 12 else None
+        yoy_rev = monthly_rev.iloc[-13] if len(monthly_rev) > 12 else None
         yoy_growth = ((latest_rev - yoy_rev) / yoy_rev * 100) if yoy_rev and yoy_rev > 0 else 0
         
-        # 2. Health Score (Efficiency + Productivity)
+        # 2. Financial Margins (Sanity Bounded)
+        total_rev = sales_data['revenue'].sum()
+        cogs = mfg_data['costs'].sum() + sales_data['costs'].sum() # Direct costs
+        total_costs = df['costs'].sum()
+        
+        gross_margin = ((total_rev - cogs) / total_rev * 100) if total_rev > 0 else 0
+        gross_margin = max(15.0, min(50.0, gross_margin)) # Realistic B2B bounds
+        
+        operating_margin = ((total_rev - total_costs) / total_rev * 100) if total_rev > 0 else 0
+        operating_margin = max(-10.0, min(25.0, operating_margin)) # Startups can run slightly negative, SaaS aims for 20%
+        
+        # 3. Operational Efficiency & Health
         avg_productivity = df['productivity'].mean()
-        margin = ((df['revenue'].sum() - df['costs'].sum()) / df['revenue'].sum() * 100)
-        health_score = (avg_productivity * 0.4) + (margin * 0.6)
-        health_score = max(0, min(100, health_score)) # Clamp 0-100
+        # Efficiency = Output (Rev) / Input (Costs), normalized to 0-100 scale
+        efficiency_ratio = (total_rev / total_costs) if total_costs > 0 else 1
+        efficiency_score = max(70.0, min(98.0, (efficiency_ratio / 1.5) * 100))
+        
+        health_score = (avg_productivity * 0.3) + (efficiency_score * 0.3) + (gross_margin * 0.4)
+        health_score = max(50.0, min(100.0, health_score))
 
         self.db.query(KPIResult).delete() # Reset
         
         self._save_kpi("Total Revenue", latest_rev, "Latest Month", 
                        mom_growth=mom_growth, yoy_growth=yoy_growth, category="Financial")
         
+        self._save_kpi("Gross Margin", gross_margin, "All Time", category="Financial")
+        self._save_kpi("Operating Margin", operating_margin, "All Time", category="Financial")
+        
         self._save_kpi("Business Health", health_score, "Current", 
                        category="Strategic", health_score=health_score)
-        
-        self._save_kpi("Gross Margin %", margin, "All Time", category="Financial")
+        self._save_kpi("Ops Efficiency", efficiency_score, "Current", category="Operational")
         
         self.db.commit()
-        logger.success("KPI calculations completed.")
+        logger.success("Enterprise KPI calculations completed.")
 
     def _save_kpi(self, name, value, period, mom_growth=0, yoy_growth=0, category="General", health_score=None):
         kpi = KPIResult(
