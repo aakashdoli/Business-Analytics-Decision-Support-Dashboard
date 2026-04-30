@@ -10,12 +10,51 @@ def apply_custom_styles():
     
     /* Sidebar Styling */
     section[data-testid="stSidebar"] {
-        background-color: #1e293b !important;
-        border-right: 1px solid rgba(255, 255, 255, 0.1);
+        background-color: rgba(15, 23, 42, 0.95) !important;
+        backdrop-filter: blur(12px);
+        background-image: linear-gradient(180deg, rgba(30, 41, 59, 0.5) 0%, rgba(15, 23, 42, 1) 100%);
+        border-right: 1px solid rgba(255, 255, 255, 0.05);
     }
     
+    /* Remove the weird Streamlit top gradient */
+    [data-testid="stSidebarNav"] {
+        background-color: transparent !important;
+    }
+    
+    /* Sidebar Icons */
+    [data-testid="stSidebarNav"] svg {
+        fill: #94a3b8 !important;
+    }
+    
+    /* Sidebar Navigation Links */
+    section[data-testid="stSidebarNav"] ul {
+        padding-top: 20px;
+    }
+    
+    section[data-testid="stSidebarNav"] li div a span {
+        color: #cbd5e1 !important; /* Light grey for links */
+        font-weight: 500;
+    }
+    
+    section[data-testid="stSidebarNav"] li div a:hover {
+        background-color: rgba(255, 255, 255, 0.05) !important;
+    }
+
     section[data-testid="stSidebar"] .stMarkdown {
         color: #f8fafc;
+    }
+
+    /* Style the Logout Button */
+    .st-emotion-cache-79elbk { /* Custom selector for logout button */
+        background-color: transparent !important;
+        border: 1px solid rgba(255, 255, 255, 0.2) !important;
+        color: white !important;
+        border-radius: 8px !important;
+    }
+    
+    .st-emotion-cache-79elbk:hover {
+        background-color: rgba(255, 255, 255, 0.1) !important;
+        border-color: white !important;
     }
     
     /* Modern Cards (Glassmorphism) */
